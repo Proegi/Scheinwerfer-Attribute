@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Was kann ein Scheinwerfer?</title>
+<style>
+:root{
+  --blau:#004993; --blau-2:#1D4E9E; --blau-hell:#D4EAFA; --orange:#F39100;
+  --ink:#202020; --ink-2:#545454; --ink-3:#8A8A8A; --line:#DADADA; --line-2:#E8E8E8;
+  --ma-bg:#000; --ma-btn:#0d0d0d; --ma-rand:#3c3c3c; --ma-aktiv:#9fd99f; --ma-gelb:#e6d400; --ma-wert:#0a1430;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--ink);font-family:"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+.kopf{background:var(--blau);color:#fff;padding:18px 24px 16px}
+.kopf .lf{font-size:.95rem;opacity:.85;margin:0 0 4px}
+.kopf h1{margin:0;font-size:1.7rem;font-weight:600}
+.kopf .balken{height:4px;background:var(--orange);margin:0 -24px -16px;margin-top:14px}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 40px}
+.intro{color:var(--ink-2);margin:0 0 16px;max-width:75ch;line-height:1.5}
+
+.pult{background:var(--ma-bg);border-radius:6px;padding:10px;border:1px solid #222}
+.leiste{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.fb{position:relative;background:var(--ma-btn);border:2px solid var(--ma-rand);border-radius:7px;color:#e8e8e8;
+  font:inherit;font-size:1.15rem;padding:16px 6px 10px;cursor:pointer;text-align:center}
+.fb .nr{position:absolute;left:7px;top:3px;font-size:.8rem;color:#cfcfcf}
+.fb .eck{position:absolute;right:6px;top:5px;width:11px;height:11px;background:#8a8a8a;border-radius:1px}
+.fb:hover{border-color:#6a6a6a}
+.fb[aria-selected="true"]{border-color:var(--ma-aktiv)}
+.fb:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+
+.panel{display:none;margin-top:10px}
+.panel.aktiv{display:block}
+.info{background:#fff;color:var(--ink);border-left:5px solid var(--orange);padding:10px 14px;margin:0 0 10px;line-height:1.5;border-radius:3px}
+.warn{background:#fff3df;color:#6b4300;border-left:5px solid var(--orange);padding:8px 14px;margin:0 0 10px;border-radius:3px;font-weight:600}
+.buehne{display:grid;gap:10px}
+.buehne.zwei{grid-template-columns:3fr 2fr}
+.flaeche{position:relative;background:#07090d;border:1px solid #1e2430;border-radius:4px;height:420px;overflow:hidden}
+.flaeche canvas{width:100%;height:100%;display:block}
+.flaeche .tag{position:absolute;left:10px;bottom:8px;color:#9aa3b2;font-size:.85rem;pointer-events:none}
+
+.encoders{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.enc{flex:1 1 220px;max-width:340px;background:#0b0b0b;border:2px solid var(--ma-gelb);border-radius:6px;padding:8px 10px 10px;color:#fff}
+.enc .kopfzeile{display:flex;justify-content:space-between;align-items:baseline}
+.enc .name{font-size:1.1rem;color:var(--ma-gelb);font-weight:600}
+.enc .zusatz{font-size:.85rem;color:#c9c9c9}
+.enc .wert{background:var(--ma-wert);color:#9fb0d8;font-size:1.15rem;text-align:center;padding:5px;margin:6px 0 8px;border-radius:3px;font-variant-numeric:tabular-nums}
+.enc input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:26px;background:transparent;cursor:pointer}
+.enc input[type=range]::-webkit-slider-runnable-track{height:8px;background:#2b2b2b;border-radius:4px;border:1px solid #444}
+.enc input[type=range]::-moz-range-track{height:8px;background:#2b2b2b;border-radius:4px;border:1px solid #444}
+.enc input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8px;border-radius:4px;background:var(--ma-gelb);border:2px solid #000}
+.enc input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:4px;background:var(--ma-gelb);border:2px solid #000}
+.enc input[type=range]:focus-visible{outline:2px solid var(--orange)}
+
+#szene3d{height:520px;perspective:1300px;cursor:grab;touch-action:none}
+#szene3d:active{cursor:grabbing}
+.welt{position:absolute;left:50%;top:60%;transform-style:preserve-3d}
+.obj{position:absolute;left:0;top:0;transform-style:preserve-3d}
+.face{position:absolute;backface-visibility:hidden}
+.boden{position:absolute;backface-visibility:visible;
+  background-color:#10141c;
+  background-image:linear-gradient(#26304080 1px,transparent 1px),linear-gradient(90deg,#26304080 1px,transparent 1px);
+  background-size:50px 50px;border:1px solid #2d3748}
+.strahl{position:absolute;backface-visibility:visible;pointer-events:none;
+  background:linear-gradient(to top,rgba(255,244,214,.55),rgba(255,244,214,0));
+  clip-path:polygon(43% 100%,57% 100%,100% 0,0 0)}
+
+@media (max-width:760px){
+  .leiste{grid-template-columns:repeat(3,1fr)}
+  .buehne.zwei{grid-template-columns:1fr}
+  .flaeche{height:320px}
+  #szene3d{height:420px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header class="kopf">
+  <p class="lf">Lernfeld 05: Beleuchtungstechnische Anlagen planen, in Betrieb nehmen und dokumentieren</p>
+  <h1>Was kann ein Scheinwerfer?</h1>
+  <div class="balken"></div>
+</header>
+
+<main>
+  <p class="intro">Die Leiste unten kennst du aus der grandMA. Jede Schaltfläche steht für eine Gruppe von Eigenschaften eines Scheinwerfers. Wähle eine Gruppe aus und probiere die Regler aus.</p>
+
+  <div class="pult">
+    <div class="leiste" role="tablist">
+      <button class="fb" role="tab" data-tab="dimmer" aria-selected="true"><span class="nr">1</span><span class="eck"></span>Dimmer</button>
+      <button class="fb" role="tab" data-tab="position" aria-selected="false"><span class="nr">2</span><span class="eck"></span>Position</button>
+      <button class="fb" role="tab" data-tab="gobo" aria-selected="false"><span class="nr">3</span><span class="eck"></span>Gobo</button>
+      <button class="fb" role="tab" data-tab="color" aria-selected="false"><span class="nr">4</span><span class="eck"></span>Color</button>
+      <button class="fb" role="tab" data-tab="beam" aria-selected="false"><span class="nr">5</span><span class="eck"></span>Beam</button>
+      <button class="fb" role="tab" data-tab="focus" aria-selected="false"><span class="nr">6</span><span class="eck"></span>Focus</button>
+    </div>
+
+    <section class="panel aktiv" id="p-dimmer" role="tabpanel">
+      <p class="info">Der Dimmer regelt die Helligkeit des Scheinwerfers. Schieb den Regler und beobachte den Lichtstrahl.</p>
+      <div class="buehne"><div class="flaeche"><canvas id="cv-dimmer"></canvas></div></div>
+      <div class="encoders" id="enc-dimmer"></div>
+    </section>
+
+    <section class="panel" id="p-position" role="tabpanel">
+      <p class="info">Ein Movinghead kann seinen Kopf in zwei Achsen bewegen. Die farbigen Seiten helfen dir, die Bewegung zu verfolgen. Mit gedrückter Maustaste kannst du die Ansicht drehen.</p>
+      <div class="buehne"><div class="flaeche" id="szene3d"><div class="welt" id="welt"></div><span class="tag">Ansicht mit der Maus drehen</span></div></div>
+      <div class="encoders" id="enc-position"></div>
+    </section>
+
+    <section class="panel" id="p-gobo" role="tabpanel">
+      <p class="info">Ein Gobo ist eine Schablone im Strahlengang. Es formt das Lichtbild, das der Scheinwerfer projiziert. Die Gobos sitzen auf einem Rad.</p>
+      <div class="buehne zwei">
+        <div class="flaeche"><canvas id="cv-gobo-wand"></canvas><span class="tag">Projektion auf der Wand</span></div>
+        <div class="flaeche"><canvas id="cv-gobo-rad"></canvas><span class="tag">Goborad im Scheinwerfer</span></div>
+      </div>
+      <div class="encoders" id="enc-gobo"></div>
+    </section>
+
+    <section class="panel" id="p-color" role="tabpanel">
+      <p class="info">Der Scheinwerfer mischt seine Farbe aus rotem, grünem und blauem Licht. Probiere aus, welche Farben entstehen.</p>
+      <div class="buehne zwei">
+        <div class="flaeche"><canvas id="cv-color"></canvas></div>
+        <div class="flaeche"><canvas id="cv-mix"></canvas><span class="tag">Rot, Grün und Blau übereinander</span></div>
+      </div>
+      <div class="encoders" id="enc-color"></div>
+    </section>
+
+    <section class="panel" id="p-beam" role="tabpanel">
+      <p class="warn">Achtung: In dieser Ansicht blinkt das Licht schnell.</p>
+      <p class="info">Der Shutter öffnet und schließt den Lichtaustritt. Öffnet und schließt er sehr schnell hintereinander, entsteht ein Stroboskop.</p>
+      <div class="buehne"><div class="flaeche"><canvas id="cv-beam"></canvas></div></div>
+      <div class="encoders" id="enc-beam"></div>
+    </section>
+
+    <section class="panel" id="p-focus" role="tabpanel">
+      <p class="info">Zoom und Focus verändern das Lichtbild. Zur Kontrolle ist ein Gobo eingesetzt. Finde heraus, was die beiden Regler bewirken, und stelle das Gobo scharf.</p>
+      <div class="buehne zwei">
+        <div class="flaeche"><canvas id="cv-focus"></canvas></div>
+        <div class="flaeche"><canvas id="cv-focus-wand"></canvas><span class="tag">Projektion auf der Wand</span></div>
+      </div>
+      <div class="encoders" id="enc-focus"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function(){
+const S = {
+  dim:0, pan:0, tilt:0, gobo:0,
+  r:100, g:100, b:100,
+  shutter:0, zoom:50, focus:0
+};
+const SCHARF = 62;
+let aktiv = 'dimmer';
+
+function fmt1(v){ return v.toFixed(1).replace('.', ','); }
+
+function encoder(parentId, o){
+  const box = document.createElement('div');
+  box.className = 'enc';
+  box.innerHTML = '<div class="kopfzeile"><span class="name"></span><span class="zusatz"></span></div><div class="wert"></div><input type="range">';
+  box.querySelector('.name').textContent = o.name;
+  const inp = box.querySelector('input');
+  inp.min = o.min; inp.max = o.max; inp.step = o.step || 0.1; inp.value = S[o.key];
+  inp.setAttribute('aria-label', o.name);
+  const wert = box.querySelector('.wert'), zus = box.querySelector('.zusatz');
+  function upd(){
+    S[o.key] = parseFloat(inp.value);
+    const f = o.fmt(S[o.key]);
+    wert.textContent = f[0];
+    zus.textContent = f[1] || '';
+    if(o.change) o.change();
+  }
+  inp.addEventListener('input', upd);
+  document.getElementById(parentId).appendChild(box);
+  upd();
+}
+const prozent = v => [fmt1(v) + ' %'];
+
+function prep(cv){
+  const r = cv.getBoundingClientRect();
+  const d = window.devicePixelRatio || 1;
+  const w = Math.max(1, Math.round(r.width * d)), h = Math.max(1, Math.round(r.height * d));
+  if(cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(d,0,0,d,0,0);
+  ctx.filter = 'none';
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  return {ctx, w:r.width, h:r.height};
+}
+
+function rgba(c, a){ return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + Math.max(0, Math.min(1, a)) + ')'; }
+
+function seitenansicht(cv, o){
+  const {ctx, w, h} = prep(cv);
+  const bg = ctx.createLinearGradient(0,0,0,h);
+  bg.addColorStop(0,'#05070a'); bg.addColorStop(1,'#0e1117');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,w,h);
+  const bodenY = h * 0.86;
+  ctx.fillStyle = '#171b22'; ctx.fillRect(0,bodenY,w,h-bodenY);
+  ctx.fillStyle = '#262c36'; ctx.fillRect(0,bodenY,w,2);
+
+  const cx = w/2;
+  ctx.fillStyle = '#3a404a'; ctx.fillRect(0,10,w,12);
+  ctx.fillStyle = '#4a515c'; ctx.fillRect(0,10,w,3);
+  ctx.fillStyle = '#2a2f37'; ctx.fillRect(cx-7,22,14,14);
+  ctx.strokeStyle = '#3a404a'; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(cx-44,78); ctx.lineTo(cx-44,36); ctx.lineTo(cx+44,36); ctx.lineTo(cx+44,78); ctx.stroke();
+  ctx.fillStyle = '#2b3038';
+  ctx.beginPath(); ctx.roundRect(cx-36,46,72,66,8); ctx.fill();
+  ctx.fillStyle = '#363c46'; ctx.fillRect(cx-36,54,72,4); ctx.fillRect(cx-36,64,72,4);
+  ctx.fillStyle = '#1d2128'; ctx.fillRect(cx-32,106,64,10);
+  const linseY = 116, linseR = 26;
+
+  const a = o.level;
+  const c = o.rgb.map(x => Math.round(x));
+  const hell = a > 0 && (c[0] + c[1] + c[2]) > 0;
+
+  if(hell){
+    const halb = o.winkel * Math.PI / 180;
+    const dist = bodenY - linseY;
+    const breite = linseR + Math.tan(halb) * dist;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.filter = 'blur(' + (1.5 + (o.weich || 0) * 14) + 'px)';
+    const g = ctx.createLinearGradient(0,linseY,0,bodenY);
+    g.addColorStop(0, rgba(c, 0.6*a)); g.addColorStop(1, rgba(c, 0.2*a));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(cx-linseR*0.9, linseY); ctx.lineTo(cx-breite, bodenY);
+    ctx.lineTo(cx+breite, bodenY); ctx.lineTo(cx+linseR*0.9, linseY);
+    ctx.closePath(); ctx.fill();
+    ctx.save();
+    ctx.translate(cx, bodenY); ctx.scale(1, 0.16);
+    const s = ctx.createRadialGradient(0,0,0,0,0,breite*1.05);
+    const innen = Math.max(0.05, 0.9 - (o.weich || 0) * 0.6);
+    s.addColorStop(0, rgba(c, 0.95*a)); s.addColorStop(innen, rgba(c, 0.75*a)); s.addColorStop(1, rgba(c, 0));
+    ctx.fillStyle = s; ctx.beginPath(); ctx.arc(0,0,breite*1.05,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+    ctx.filter = 'none';
+    const gl = ctx.createRadialGradient(cx,linseY,0,cx,linseY,80);
+    gl.addColorStop(0, rgba(c, 0.9*a)); gl.addColorStop(1, rgba(c, 0));
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(cx,linseY,80,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+  ctx.fillStyle = hell ? rgba([Math.round(30+c[0]*a*0.88), Math.round(30+c[1]*a*0.88), Math.round(30+c[2]*a*0.88)], 1) : '#20252d';
+  ctx.beginPath(); ctx.ellipse(cx,linseY,linseR,5,0,0,Math.PI*2); ctx.fill();
+}
+
+/* Gobos */
+const GOBO_NAMEN = ['Offen','Punkte','Stern','Streifen','Dreiecke','Kreuz','Ringe','Raster','Blüte','Breakup'];
+function zufall(seed){ let s = seed; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
+function goboZeichnen(ctx, i, r){
+  ctx.save();
+  ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.clip();
+  ctx.beginPath();
+  switch(i){
+    case 0: ctx.arc(0,0,r,0,Math.PI*2); break;
+    case 1:
+      ctx.arc(0,0,r*0.17,0,Math.PI*2);
+      for(let k=0;k<8;k++){ const t=k*Math.PI/4; ctx.moveTo(Math.cos(t)*r*0.62+r*0.15, Math.sin(t)*r*0.62); ctx.arc(Math.cos(t)*r*0.62, Math.sin(t)*r*0.62, r*0.15, 0, Math.PI*2); }
+      break;
+    case 2:
+      for(let k=0;k<10;k++){ const t=-Math.PI/2+k*Math.PI/5, rr=(k%2? r*0.4 : r*0.95); k? ctx.lineTo(Math.cos(t)*rr,Math.sin(t)*rr) : ctx.moveTo(Math.cos(t)*rr,Math.sin(t)*rr); }
+      ctx.closePath(); break;
+    case 3:
+      for(let k=-4;k<=4;k++) ctx.rect(k*r*0.23 - r*0.075, -r, r*0.15, 2*r);
+      break;
+    case 4:
+      for(let k=0;k<3;k++){ const t=-Math.PI/2+k*2*Math.PI/3;
+        ctx.moveTo(Math.cos(t)*r*0.96, Math.sin(t)*r*0.96);
+        ctx.lineTo(Math.cos(t-0.5)*r*0.22, Math.sin(t-0.5)*r*0.22);
+        ctx.lineTo(Math.cos(t+0.5)*r*0.22, Math.sin(t+0.5)*r*0.22); ctx.closePath(); }
+      break;
+    case 5:
+      ctx.rect(-r*0.15,-r,r*0.3,2*r); ctx.rect(-r,-r*0.15,2*r,r*0.3); break;
+    case 6:
+      ctx.arc(0,0,r*0.14,0,Math.PI*2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = r*0.13;
+      [0.42,0.75].forEach(q => { ctx.moveTo(r*q,0); ctx.arc(0,0,r*q,0,Math.PI*2); });
+      ctx.stroke(); ctx.restore(); return;
+    case 7:
+      for(let x=-3;x<=3;x++) for(let y=-3;y<=3;y++){ const px=x*r*0.29, py=y*r*0.29; ctx.moveTo(px+r*0.09,py); ctx.arc(px,py,r*0.09,0,Math.PI*2); }
+      break;
+    case 8:
+      for(let k=0;k<6;k++){ const t=k*Math.PI/3; ctx.moveTo(0,0); ctx.ellipse(Math.cos(t)*r*0.48, Math.sin(t)*r*0.48, r*0.44, r*0.17, t, 0, Math.PI*2); }
+      ctx.fill(); ctx.beginPath(); ctx.fillStyle = '#000'; ctx.arc(0,0,r*0.12,0,Math.PI*2); ctx.fill(); ctx.restore(); return;
+    case 9: {
+      const z = zufall(7);
+      for(let k=0;k<26;k++){ const t=z()*Math.PI*2, d=Math.sqrt(z())*r*0.9, rr=r*(0.06+z()*0.13);
+        const px=Math.cos(t)*d, py=Math.sin(t)*d; ctx.moveTo(px+rr,py); ctx.ellipse(px,py,rr,rr*(0.5+z()*0.6),z()*3,0,Math.PI*2); }
+      break; }
+  }
+  ctx.fill();
+  ctx.restore();
+}
+
+const goboCache = {};
+function goboBild(i){
+  if(goboCache[i]) return goboCache[i];
+  const c = document.createElement('canvas'); c.width = c.height = 512;
+  const x = c.getContext('2d');
+  x.translate(256,256);
+  x.fillStyle = '#fff6e2';
+  goboZeichnen(x, i, 240);
+  x.globalCompositeOperation = 'destination-in';
+  const v = x.createRadialGradient(0,0,0,0,0,248);
+  v.addColorStop(0,'rgba(0,0,0,1)'); v.addColorStop(0.85,'rgba(0,0,0,0.92)'); v.addColorStop(1,'rgba(0,0,0,0.7)');
+  x.fillStyle = v; x.fillRect(-256,-256,512,512);
+  goboCache[i] = c;
+  return c;
+}
+
+function wandansicht(cv, gobo, radiusAnteil, unschaerfe){
+  const {ctx, w, h} = prep(cv);
+  const bg = ctx.createRadialGradient(w/2,h/2,0,w/2,h/2,Math.max(w,h)*0.7);
+  bg.addColorStop(0,'#1a1d23'); bg.addColorStop(1,'#0b0d11');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,w,h);
+  const r = Math.min(w,h) * 0.46 * radiusAnteil;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const halo = ctx.createRadialGradient(w/2,h/2,r*0.6,w/2,h/2,r*1.6);
+  halo.addColorStop(0,'rgba(255,240,210,0.10)'); halo.addColorStop(1,'rgba(255,240,210,0)');
+  ctx.fillStyle = halo; ctx.fillRect(0,0,w,h);
+  ctx.filter = 'blur(' + unschaerfe + 'px)';
+  ctx.drawImage(goboBild(gobo), w/2-r, h/2-r, 2*r, 2*r);
+  ctx.restore();
+}
+
+let radDrehung = 0;
+function goborad(cv, aktivSlot){
+  const {ctx, w, h} = prep(cv);
+  ctx.fillStyle = '#07090d'; ctx.fillRect(0,0,w,h);
+  const cx = w/2, cy = h/2 + 10, R = Math.min(w,h) * 0.40;
+  const ziel = -aktivSlot * Math.PI * 2 / 10;
+  let diff = ziel - radDrehung;
+  while(diff > Math.PI) diff -= Math.PI*2;
+  while(diff < -Math.PI) diff += Math.PI*2;
+  radDrehung += diff * 0.15;
+
+  const m = ctx.createRadialGradient(cx-R*0.3,cy-R*0.3,R*0.1,cx,cy,R);
+  m.addColorStop(0,'#5d646f'); m.addColorStop(1,'#2c3138');
+  ctx.fillStyle = m; ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#1b1f25'; ctx.beginPath(); ctx.arc(cx,cy,R*0.13,0,Math.PI*2); ctx.fill();
+
+  const lr = R*0.19, bahn = R*0.68;
+  for(let k=0;k<10;k++){
+    const t = -Math.PI/2 + k*Math.PI*2/10 + radDrehung;
+    const x = cx + Math.cos(t)*bahn, y = cy + Math.sin(t)*bahn;
+    ctx.save(); ctx.translate(x,y);
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0,0,lr,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = k === aktivSlot ? '#fff6e2' : '#8d8a80';
+    ctx.rotate(t + Math.PI/2);
+    goboZeichnen(ctx, k, lr*0.92);
+    ctx.restore();
+  }
+  ctx.strokeStyle = '#F39100'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(cx, cy-bahn, lr+6, 0, Math.PI*2); ctx.stroke();
+  ctx.fillStyle = '#F39100';
+  ctx.beginPath(); ctx.moveTo(cx-10, cy-bahn-lr-24); ctx.lineTo(cx+10, cy-bahn-lr-24); ctx.lineTo(cx, cy-bahn-lr-10); ctx.closePath(); ctx.fill();
+  ctx.font = '13px "Segoe UI", Arial, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Strahlengang', cx, cy-bahn-lr-30);
+}
+
+function mischung(cv){
+  const {ctx, w, h} = prep(cv);
+  ctx.fillStyle = '#000'; ctx.fillRect(0,0,w,h);
+  const r = Math.min(w,h) * 0.26, cx = w/2, cy = h/2 + 6, d = r*0.62;
+  const kreise = [
+    [cx, cy-d, [255,0,0], S.r],
+    [cx-d*0.87, cy+d*0.5, [0,255,0], S.g],
+    [cx+d*0.87, cy+d*0.5, [0,0,255], S.b]
+  ];
+  ctx.globalCompositeOperation = 'lighter';
+  kreise.forEach(k => {
+    const f = k[3]/100;
+    ctx.fillStyle = 'rgb(' + Math.round(k[2][0]*f) + ',' + Math.round(k[2][1]*f) + ',' + Math.round(k[2][2]*f) + ')';
+    ctx.beginPath(); ctx.arc(k[0],k[1],r,0,Math.PI*2); ctx.fill();
+  });
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+  kreise.forEach(k => { ctx.beginPath(); ctx.arc(k[0],k[1],r,0,Math.PI*2); ctx.stroke(); });
+}
+
+/* 3D Movinghead */
+const welt = document.getElementById('welt');
+function el(cls, parent){ const d = document.createElement('div'); d.className = cls; parent.appendChild(d); return d; }
+function quader(parent, w, h, d, x, y, z, farben){
+  const g = el('obj', parent);
+  g.style.transform = 'translate3d(' + x + 'px,' + y + 'px,' + z + 'px)';
+  const seiten = [
+    ['vorne', w, h, 'translateZ(' + d/2 + 'px)'],
+    ['hinten', w, h, 'rotateY(180deg) translateZ(' + d/2 + 'px)'],
+    ['rechts', d, h, 'rotateY(90deg) translateZ(' + w/2 + 'px)'],
+    ['links', d, h, 'rotateY(-90deg) translateZ(' + w/2 + 'px)'],
+    ['oben', w, d, 'rotateX(90deg) translateZ(' + h/2 + 'px)'],
+    ['unten', w, d, 'rotateX(-90deg) translateZ(' + h/2 + 'px)']
+  ];
+  const faces = {};
+  seiten.forEach(s => {
+    const f = el('face', g);
+    f.style.width = s[1] + 'px'; f.style.height = s[2] + 'px';
+    f.style.left = (-s[1]/2) + 'px'; f.style.top = (-s[2]/2) + 'px';
+    f.style.transform = s[3];
+    f.style.background = farben[s[0]];
+    faces[s[0]] = f;
+  });
+  return {g, faces};
+}
+
+const boden = el('boden', welt);
+boden.style.width = '760px'; boden.style.height = '760px';
+boden.style.left = '-380px'; boden.style.top = '-380px';
+boden.style.transform = 'translateY(190px) rotateX(90deg)';
+
+const grau = {vorne:'#3b414b', hinten:'#353a43', rechts:'#2e333b', links:'#2e333b', oben:'#4a515c', unten:'#22262c'};
+const sockel = quader(welt, 170, 50, 170, 0, 165, 0, grau);
+const disp = el('face', sockel.faces.vorne);
+disp.style.cssText += ';width:56px;height:20px;left:57px;top:15px;background:#5fa8ff;border-radius:2px;backface-visibility:hidden';
+
+const buegel = el('obj', welt);
+quader(buegel, 18, 160, 60, -64, 40, 0, grau);
+quader(buegel, 18, 160, 60, 64, 40, 0, grau);
+quader(buegel, 146, 20, 60, 0, 130, 0, grau);
+
+const kopf = el('obj', buegel);
+const kopfQ = quader(kopf, 100, 120, 100, 0, 0, 0, {
+  vorne:'#d32f2f', hinten:'#f57c00', rechts:'#2e7d32', links:'#1565c0', unten:'#f9d71c',
+  oben:'radial-gradient(circle at 50% 50%, #fffbe8 0 22%, #f3d98a 30%, #3a3f48 36%, #2a2e35 100%)'
+});
+const s1 = el('strahl', kopf), s2 = el('strahl', kopf);
+[s1, s2].forEach((s, i) => {
+  s.style.width = '320px'; s.style.height = '620px';
+  s.style.left = '-160px'; s.style.top = (-60 - 620) + 'px';
+  s.style.transformOrigin = '50% 100%';
+  s.style.transform = i ? 'rotateY(90deg)' : 'none';
+});
+
+let kamX = -16, kamY = -32;
+function weltSetzen(){
+  const sz = document.getElementById('szene3d');
+  const sk = Math.min(1, sz.clientWidth / 760, sz.clientHeight / 600);
+  welt.style.transform = 'scale(' + sk + ') rotateX(' + kamX + 'deg) rotateY(' + kamY + 'deg)';
+  buegel.style.transform = 'rotateY(' + S.pan + 'deg)';
+  kopf.style.transform = 'rotateX(' + S.tilt + 'deg)';
+}
+(function(){
+  const sz = document.getElementById('szene3d');
+  let zieh = null;
+  sz.addEventListener('pointerdown', e => { zieh = {x:e.clientX, y:e.clientY}; sz.setPointerCapture(e.pointerId); });
+  sz.addEventListener('pointermove', e => {
+    if(!zieh) return;
+    kamY += (e.clientX - zieh.x) * 0.4;
+    kamX = Math.max(-70, Math.min(10, kamX - (e.clientY - zieh.y) * 0.3));
+    zieh = {x:e.clientX, y:e.clientY};
+    weltSetzen();
+  });
+  const ende = () => { zieh = null; };
+  sz.addEventListener('pointerup', ende); sz.addEventListener('pointercancel', ende);
+})();
+
+/* Regler */
+encoder('enc-dimmer', {key:'dim', name:'Dim', min:0, max:100, fmt:prozent});
+encoder('enc-position', {key:'pan', name:'Pan', min:-270, max:270, fmt:v => [fmt1(v) + ' °'], change:weltSetzen});
+encoder('enc-position', {key:'tilt', name:'Tilt', min:-135, max:135, fmt:v => [fmt1(v) + ' °'], change:weltSetzen});
+encoder('enc-gobo', {key:'gobo', name:'Gobo1', min:0, max:100, fmt:v => [fmt1(v) + ' %', GOBO_NAMEN[Math.min(9, Math.floor(v/10))]]});
+encoder('enc-color', {key:'r', name:'R', min:0, max:100, fmt:prozent});
+encoder('enc-color', {key:'g', name:'G', min:0, max:100, fmt:prozent});
+encoder('enc-color', {key:'b', name:'B', min:0, max:100, fmt:prozent});
+encoder('enc-beam', {key:'shutter', name:'Shutter', min:0, max:100, fmt:v => v <= 0 ? [fmt1(v) + ' %', 'Offen'] : [fmt1(v) + ' %', 'Strobe']});
+encoder('enc-focus', {key:'zoom', name:'Zoom', min:0, max:100, fmt:prozent});
+encoder('enc-focus', {key:'focus', name:'Focus', min:0, max:100, fmt:prozent});
+
+/* Reiter */
+document.querySelectorAll('.fb').forEach(b => b.addEventListener('click', () => {
+  aktiv = b.dataset.tab;
+  document.querySelectorAll('.fb').forEach(x => x.setAttribute('aria-selected', x === b ? 'true' : 'false'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('aktiv', p.id === 'p-' + aktiv));
+  if(aktiv === 'position') weltSetzen();
+}));
+window.addEventListener('resize', () => { if(aktiv === 'position') weltSetzen(); });
+
+const WARMWEISS = [255, 244, 222];
+function zoomWinkel(){ return 3 + S.zoom / 100 * 22; }
+function unschaerfe(){ return Math.abs(S.focus - SCHARF) * 0.26; }
+
+function schleife(t){
+  if(aktiv === 'dimmer'){
+    seitenansicht(document.getElementById('cv-dimmer'), {level:S.dim/100, rgb:WARMWEISS, winkel:12});
+  } else if(aktiv === 'gobo'){
+    const slot = Math.min(9, Math.floor(S.gobo/10));
+    wandansicht(document.getElementById('cv-gobo-wand'), slot, 0.85, 0.8);
+    goborad(document.getElementById('cv-gobo-rad'), slot);
+  } else if(aktiv === 'color'){
+    seitenansicht(document.getElementById('cv-color'), {level:1, rgb:[255*S.r/100, 255*S.g/100, 255*S.b/100], winkel:12});
+    mischung(document.getElementById('cv-mix'));
+  } else if(aktiv === 'beam'){
+    let an = true;
+    if(S.shutter > 0){
+      const hz = 1 + (S.shutter / 100) * 19;
+      an = ((t / 1000) * hz) % 1 < 0.3;
+    }
+    seitenansicht(document.getElementById('cv-beam'), {level:an ? 1 : 0, rgb:WARMWEISS, winkel:12});
+  } else if(aktiv === 'focus'){
+    const wink = zoomWinkel();
+    const u = unschaerfe();
+    seitenansicht(document.getElementById('cv-focus'), {level:1, rgb:WARMWEISS, winkel:wink, weich:Math.min(1, u/12)});
+    const anteil = Math.max(0.12, Math.tan(wink*Math.PI/180) / Math.tan(25*Math.PI/180));
+    wandansicht(document.getElementById('cv-focus-wand'), 2, anteil, u * anteil);
+  }
+  requestAnimationFrame(schleife);
+}
+weltSetzen();
+requestAnimationFrame(schleife);
+})();
+</script>
+</body>
+</html>
